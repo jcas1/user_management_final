@@ -68,10 +68,7 @@ class UserService:
             new_user.role = UserRole.ADMIN if user_count == 0 else UserRole.ANONYMOUS            
             if new_user.role == UserRole.ADMIN:
                 new_user.email_verified = True
-
-            else:
-                new_user.verification_token = generate_verification_token()
-
+            new_user.verification_token = generate_verification_token() #Generates the verification token whenever a new user registers 
             session.add(new_user)
             await session.commit()
             await email_service.send_verification_email(new_user) #Made it so that the user is added first, then the user verification email is sent.
