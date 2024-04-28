@@ -54,6 +54,12 @@ class UserUpdate(UserBase):
             raise ValueError("At least one field must be provided for update")
         return values
 
+    @validator("role")
+    def validate_role(cls, value):
+        if value not in UserRole.__members__:
+            raise ValueError("Invalid role. Allowed roles are ANONYMOUS, AUTHENTICATED, MANAGER, ADMIN.")
+        return value
+
 class UserResponse(UserBase):
     id: uuid.UUID = Field(..., example=uuid.uuid4())
     email: EmailStr = Field(..., example="john.doe@example.com")

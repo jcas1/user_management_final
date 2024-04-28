@@ -85,6 +85,8 @@ class UserService:
 
             if 'password' in validated_data:
                 validated_data['hashed_password'] = hash_password(validated_data.pop('password'))
+            if 'role' in validated_data and validated_data['role'] not in UserRole.__members__: # Ensure role validation occurs
+                raise ValueError("Invalid role assignment.")
             query = update(User).where(User.id == user_id).values(**validated_data).execution_options(synchronize_session="fetch")
             await cls._execute_query(session, query)
             updated_user = await cls.get_by_id(session, user_id)
