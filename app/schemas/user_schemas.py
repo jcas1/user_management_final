@@ -37,6 +37,26 @@ class UserCreate(UserBase):
     email: EmailStr = Field(..., example="john.doe@example.com")
     password: str = Field(..., example="Secure*1234")
 
+    @validator("password", pre=True, always=True)
+    def validate_password(cls, value):
+        # Apply the password validation logic
+        if not 8 <= len(value) <= 16:
+            raise ValueError("Password must be between 8 and 16 characters long.")
+
+        if not any(char.isupper() for char in value):
+            raise ValueError("Password must contain at least one uppercase letter.")
+
+        if not any(char.islower() for char in value):
+            raise ValueError("Password must contain at least one lowercase letter.")
+
+        if not any(char.isdigit() for char in value):
+            raise ValueError("Password must contain at least one number.")
+
+        if not any(re.search(r"[^\w\s]", char) for char in value):
+            raise ValueError("Password must contain at least one special character.")
+
+        return value
+
 VALID_IMAGE_EXTENSIONS = ["png", "jpg", "jpeg"] #valid extensions for profile pictures
 class UserUpdate(UserBase):
     email: Optional[EmailStr] = Field(None, example="john.doe@example.com")
