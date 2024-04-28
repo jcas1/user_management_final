@@ -15,9 +15,11 @@ from uuid import UUID
 from app.services.email_service import EmailService
 from app.models.user_model import UserRole
 import logging
+import re
 
 settings = get_settings()
 logger = logging.getLogger(__name__)
+VALID_IMAGE_EXTENSIONS = ["png", "jpg", "jpeg"]
 
 class UserService:
     @classmethod
@@ -53,6 +55,10 @@ class UserService:
     async def create(cls, session: AsyncSession, user_data: Dict[str, str], email_service: EmailService) -> Optional[User]:
         try:
             validated_data = UserCreate(**user_data).model_dump()
+            if 'profile_picture_url' in validated_data:
+                url = validated_data['profile_picture_url']
+                if not re.search(rf"\.({'|'.join(VALID_IMAGE_EXTENSIONS)})$", url, re.IGNORECASE):
+                    raise ValidationError(f"Profile picture must be a PNG, JPG, or JPEG.")
             existing_user = await cls.get_by_email(session, validated_data['email'])
             if existing_user:
                 logger.error("User with given email already exists.")
@@ -121,7 +127,6 @@ class UserService:
     async def register_user(cls, session: AsyncSession, user_data: Dict[str, str], get_email_service) -> Optional[User]:
         return await cls.create(session, user_data, get_email_service)
     
-
     @classmethod
     async def login_user(cls, session: AsyncSession, email: str, password: str) -> Optional[User]:
         user = await cls.get_by_email(session, email)
