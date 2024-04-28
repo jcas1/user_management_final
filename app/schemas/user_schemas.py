@@ -37,6 +37,7 @@ class UserCreate(UserBase):
     email: EmailStr = Field(..., example="john.doe@example.com")
     password: str = Field(..., example="Secure*1234")
 
+VALID_IMAGE_EXTENSIONS = ["png", "jpg", "jpeg"] #valid extensions for profile pictures
 class UserUpdate(UserBase):
     email: Optional[EmailStr] = Field(None, example="john.doe@example.com")
     nickname: Optional[str] = Field(None, min_length=3, pattern=r'^[\w-]+$', example="john_doe123")
@@ -58,6 +59,13 @@ class UserUpdate(UserBase):
     def validate_role(cls, value):
         if value not in UserRole.__members__:
             raise ValueError("Invalid role. Allowed roles are ANONYMOUS, AUTHENTICATED, MANAGER, ADMIN.")
+        return value
+
+    @validator("profile_picture_url")
+    def validate_profile_picture_format(cls, value):
+        if value:
+            if not re.search(rf"\.({'|'.join(VALID_IMAGE_EXTENSIONS)})$", value, re.IGNORECASE):  # Ensure the URL ends with an allowed image extension
+                raise ValueError("Profile picture must be a PNG, JPG, or JPEG.")
         return value
 
 class UserResponse(UserBase):
