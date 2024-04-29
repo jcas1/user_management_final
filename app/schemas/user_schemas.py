@@ -36,12 +36,13 @@ class UserBase(BaseModel):
 class UserCreate(UserBase):
     email: EmailStr = Field(..., example="john.doe@example.com")
     password: str = Field(..., example="Secure*1234")
+    role: str
 
     @validator("password", pre=True, always=True)
     def validate_password(cls, value):
         # Apply the password validation logic
-        if not 8 <= len(value) <= 16:
-            raise ValueError("Password must be between 8 and 16 characters long.")
+        if not 8 <= len(value) :
+            raise ValueError("Password must be at least 8 characters long.")
 
         if not any(char.isupper() for char in value):
             raise ValueError("Password must contain at least one uppercase letter.")
