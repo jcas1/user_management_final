@@ -1,5 +1,6 @@
 from builtins import Exception, bool, classmethod, int, str
 from datetime import datetime, timezone
+from fastapi import HTTPException
 import secrets
 from typing import Optional, Dict, List
 from pydantic import ValidationError
@@ -55,14 +56,16 @@ class UserService:
     async def create(cls, session: AsyncSession, user_data: Dict[str, str], email_service: EmailService) -> Optional[User]:
         try:
             validated_data = UserCreate(**user_data).model_dump()
-            if 'profile_picture_url' in validated_data:
-                url = validated_data['profile_picture_url']
-                if not re.search(rf"\.({'|'.join(VALID_IMAGE_EXTENSIONS)})$", url, re.IGNORECASE):
-                    raise ValidationError(f"Profile picture must be a PNG, JPG, or JPEG.")
-            existing_user = await cls.get_by_email(session, validated_data['email'])
+            if "profile_picture_url" in validated_data:
+                url = validated_data["profile_picture_url"]
+                if url and not re.search(rf"\.({'|'.join(VALID_IMAGE_EXTENSIONS)})$", url, re.IGNORECASE):
+                    raise HTTPException(status_code=422, detail="Profile picture must be a PNG, JPG, or JPEG.")
+                
+            existing_user = await cls.get_by_email(session, validated_data["email"])
             if existing_user:
-                logger.error("User with given email already exists.")
-                return None
+                raise HTTPException(
+                    status_code=400, detail="Email already exists"  # Ensure this returns 400
+                )
             validated_data['hashed_password'] = hash_password(validated_data.pop('password'))
             new_user = User(**validated_data)
             new_nickname = generate_nickname()
