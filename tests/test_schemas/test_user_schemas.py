@@ -108,3 +108,60 @@ def test_user_base_url_invalid(url, user_base_data):
     user_base_data["profile_picture_url"] = url
     with pytest.raises(ValidationError):
         UserBase(**user_base_data)
+
+@pytest.mark.parametrize(
+    "password, should_raise_error",
+    [
+        ("Secure*1234", False),  # Valid password
+        ("Password1234", True),  # Missing special character
+        ("secure*1234", True),  # Missing uppercase letter
+        ("SECURE*1234", True),  # Missing lowercase letter
+        ("Secure*12", False),  # Valid password with the minimum 8 characters
+        ("123456789", True),  # Only digits
+        ("Short1*", True),  # Too short (less than 8 characters)
+        ("NoNumbers*", True),  # Missing numbers
+        ("Secure12345", True),  # Missing special characters
+    ],
+)
+def test_validate_password(password, should_raise_error):
+    if should_raise_error:
+        with pytest.raises(ValidationError):
+            # Attempt to create a UserCreate instance with an invalid password
+            UserCreate(email="test@example.com", password=password, role="AUTHENTICATED")
+    else:
+        # Valid passwords should not raise an error
+        user_create = UserCreate(email="test@example.com", password=password, role="AUTHENTICATED")
+        assert user_create.password == password  # Ensure the password is set correctly
+
+@pytest.mark.parametrize(
+    "role, should_raise_error",
+    [
+        ("ANONYMOUS", False),  # Valid role
+        ("AUTHENTICATED", False),  # Valid role
+        ("MANAGER", False),  # Valid role
+        ("ADMIN", False),  # Valid role
+        ("SUPER_ADMIN", True),  # Invalid role
+        ("", True),  # Invalid (empty string)
+        (123, True),  # Invalid (not a string)
+    ],
+)
+def test_validate_role(role, should_raise_error):
+    if should_raise_error:
+        with pytest.raises(ValidationError):
+            # Attempt to create a UserUpdate instance with an invalid role
+            UserUpdate(role=role)
+    else:
+        # Valid roles should not raise an error
+        user_update = UserUpdate(role=role)
+        assert user_update.role == role  # Ensure the role is set correctly
+
+# Test case for UserUpdate with valid data
+def test_user_update_valid(user_update_data):
+    user_update = UserUpdate(**user_update_data)
+    assert user_update.email == user_update_data["email"]
+    assert user_update.first_name == user_update_data["first_name"]
+
+# Test case for UserResponse with valid data
+def test_user_response_valid(user_response_data):
+    user = UserResponse(**user_response_data)
+    assert user.id == user_response_data["id"]
