@@ -206,3 +206,17 @@ async def test_unlock_non_existent_user(db_session):
     non_existent_user_id = "non-existent-id"
     unlocked = await UserService.unlock_user_account(db_session, non_existent_user_id)
     assert not unlocked, "Unlocking non-existent user should fail"
+
+async def test_create_user_with_malicious_nickname(db_session, email_service):
+    malicious_nickname = "<script>alert('XSS');</script>"
+    user_data = {
+        "nickname": malicious_nickname,
+        "email": "malicious_nickname@example.com",
+        "password": "ValidPassword123!",
+    }
+    user = await UserService.create(db_session, user_data, email_service)
+    assert user is None, "Creating a user with potentially malicious nickname should fail"
+
+async def test_update_user_with_null_fields(db_session, user):
+    updated_user = await UserService.update(db_session, user.id, {"email": None})
+    assert updated_user is None, "Updating user with null required fields should fail"
