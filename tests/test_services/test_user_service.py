@@ -161,3 +161,48 @@ async def test_unlock_user_account(db_session, locked_user):
     assert unlocked, "The account should be unlocked"
     refreshed_user = await UserService.get_by_id(db_session, locked_user.id)
     assert not refreshed_user.is_locked, "The user should no longer be locked"
+
+async def test_create_user_duplicate_nickname(db_session, email_service):
+    # First, create a user with a known nickname
+    existing_nickname = generate_nickname()
+    await UserService.create(
+        db_session,
+        {
+            "nickname": existing_nickname,
+            "email": "unique_email@example.com",
+            "password": "ValidPassword123!",
+        },
+        email_service,
+    )
+
+    # Try to create a user with the same nickname
+    user_data = {
+        "nickname": existing_nickname,
+        "email": "different_email@example.com",
+        "password": "ValidPassword123!",
+    }
+    user = await UserService.create(db_session, user_data, email_service)
+    assert user is None, "User creation with duplicate nickname should fail"
+
+async def test_create_user_with_invalid_email_format(db_session, email_service):
+    invalid_email = "invalidemail.com"
+    user_data = {
+        "nickname": generate_nickname(),
+        "email": invalid_email,
+        "password": "ValidPassword123!",
+    }
+    user = await UserService.create(db_session, user_data, email_service)
+    assert user is None, "User creation with invalid email should fail"
+
+async def test_login_user_when_locked(db_session, verified_user):
+    # Lock the user
+    verified_user.is_locked = True
+    await db_session.commit()
+    
+    user = await UserService.login_user(db_session, verified_user.email, "CorrectPassword123!")
+    assert user is None, "Locked account should not be able to log in"
+
+async def test_unlock_non_existent_user(db_session):
+    non_existent_user_id = "non-existent-id"
+    unlocked = await UserService.unlock_user_account(db_session, non_existent_user_id)
+    assert not unlocked, "Unlocking non-existent user should fail"
