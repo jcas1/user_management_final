@@ -207,3 +207,45 @@ class UserService:
             await session.commit()
             return True
         return False
+
+    #NEW FUNCTION SEARCH USERS IF ADMIN
+    @classmethod
+    async def search_users(
+        cls,
+        session: AsyncSession,
+        username: Optional[str] = None,
+        email: Optional[str] = None,
+        role: Optional[UserRole] = None,
+        is_locked: Optional[bool] = None,
+        email_verified: Optional[bool] = None,
+        date_from: Optional[datetime] = None,
+        date_to: Optional[datetime] = None,
+        limit: int = 10,
+        skip: int = 0,
+    ) -> List[User]:
+        query = select(User).offset(skip).limit(limit)
+
+        if username:
+            query = query.where(User.nickname.ilike(f"%{username}%"))
+
+        if email:
+            query = query.where(User.email.ilike(f"%{email}%"))
+
+        if role:
+            query = query.where(User.role == role)
+
+        if is_locked is not None:
+            query = query.where(User.is_locked == is_locked)
+
+        if email_verified is not None:
+            query = query.where(User.email_verified == email_verified)
+
+        if date_from and date_to:
+            query = query.where(User.created_at.between(date_from, date_to))
+        elif date_from:
+            query = query.where(User.created_at >= date_from)
+        elif date_to:
+            query = query.where(User.created_at <= date_to)
+
+        result = await session.execute(query)
+        return result.scalars().all()
