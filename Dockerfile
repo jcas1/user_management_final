@@ -9,9 +9,10 @@ ENV PYTHONUNBUFFERED=1 \
     PIP_DISABLE_PIP_VERSION_CHECK=on \
     QR_CODE_DIR=/myapp/qr_codes
 
+# Set the working directory
 WORKDIR /myapp
 
-# Update system and specifically upgrade libc-bin to the required security patch version
+# Update system and upgrade libc-bin to the required security patch version
 RUN apt-get update && apt-get upgrade -y \
     && apt-get install -y --no-install-recommends \
        gcc \
@@ -19,19 +20,17 @@ RUN apt-get update && apt-get upgrade -y \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
-# Install Python dependencies in /.venv
+# Install Python dependencies in a virtual environment
 COPY requirements.txt .
 RUN python -m venv /.venv \
-    && . /.venv/bin/activate \
-    && pip install --upgrade pip \
-    && pip install -r requirements.txt
+    && /.venv/bin/pip install --upgrade pip \
+    && /.venv/bin/pip install -r requirements.txt
 
 # Define a second stage for the runtime, using the same Debian Bookworm slim image
 FROM python:3.12-slim-bookworm as final
 
-# Upgrade libc-bin in the final stage to ensure security patch is applied
-RUN apt-get update \
-    && apt-get upgrade -y \  # This updates all packages, including libc-bin and libc6, to address security vulnerabilities
+# Upgrade system packages to ensure security patches are applied
+RUN apt-get update && apt-get upgrade -y \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
@@ -54,8 +53,8 @@ USER myuser
 # Copy application code with appropriate ownership
 COPY --chown=myuser:myuser . .
 
-# Inform Docker that the container listens on the specified port at runtime.
+# Inform Docker that the container listens on the specified port at runtime
 EXPOSE 8000
 
-# Use ENTRYPOINT to specify the executable when the container starts.
+# Use ENTRYPOINT to specify the executable when the container starts
 ENTRYPOINT ["uvicorn", "app.main:app", "--reload", "--host", "0.0.0.0", "--port", "8000"]
