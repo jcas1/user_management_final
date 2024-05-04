@@ -31,6 +31,7 @@ FROM python:3.12-slim-bookworm as final
 
 # Upgrade libc-bin in the final stage to ensure security patch is applied
 RUN apt-get update && apt-get install -y libc-bin=2.36-9+deb12u6 \
+    && apt-get upgrade -y \  # This updates all packages, including libc-bin and libc6, to address security vulnerabilities
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
