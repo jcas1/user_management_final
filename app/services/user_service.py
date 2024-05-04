@@ -207,7 +207,7 @@ class UserService:
             await session.commit()
             return True
         return False
-
+      
     #NEW FUNCTION SEARCH USERS IF ADMIN
     @classmethod
     async def search_users(
@@ -249,3 +249,4 @@ class UserService:
 
         result = await session.execute(query)
         return result.scalars().all()
+ 
