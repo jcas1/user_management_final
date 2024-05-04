@@ -36,7 +36,29 @@ class UserBase(BaseModel):
 class UserCreate(UserBase):
     email: EmailStr = Field(..., example="john.doe@example.com")
     password: str = Field(..., example="Secure*1234")
+    role: str
 
+    @validator("password", pre=True, always=True)
+    def validate_password(cls, value):
+        # Apply the password validation logic
+        if not 8 <= len(value) :
+            raise ValueError("Password must be at least 8 characters long.")
+
+        if not any(char.isupper() for char in value):
+            raise ValueError("Password must contain at least one uppercase letter.")
+
+        if not any(char.islower() for char in value):
+            raise ValueError("Password must contain at least one lowercase letter.")
+
+        if not any(char.isdigit() for char in value):
+            raise ValueError("Password must contain at least one number.")
+
+        if not any(re.search(r"[^\w\s]", char) for char in value):
+            raise ValueError("Password must contain at least one special character.")
+
+        return value
+
+VALID_IMAGE_EXTENSIONS = ["png", "jpg", "jpeg"] #valid extensions for profile pictures
 class UserUpdate(UserBase):
     email: Optional[EmailStr] = Field(None, example="john.doe@example.com")
     nickname: Optional[str] = Field(None, min_length=3, pattern=r'^[\w-]+$', example="john_doe123")
@@ -53,6 +75,19 @@ class UserUpdate(UserBase):
         if not any(values.values()):
             raise ValueError("At least one field must be provided for update")
         return values
+
+    @validator("role")
+    def validate_role(cls, value):
+        if value not in UserRole.__members__:
+            raise ValueError("Invalid role. Allowed roles are ANONYMOUS, AUTHENTICATED, MANAGER, ADMIN.")
+        return value
+
+    @validator("profile_picture_url")
+    def validate_profile_picture_format(cls, value):
+        if value:
+            if not re.search(rf"\.({'|'.join(VALID_IMAGE_EXTENSIONS)})$", value, re.IGNORECASE):  # Ensure the URL ends with an allowed image extension
+                raise ValueError("Profile picture must be a PNG, JPG, or JPEG.")
+        return value
 
 class UserResponse(UserBase):
     id: uuid.UUID = Field(..., example=uuid.uuid4())
