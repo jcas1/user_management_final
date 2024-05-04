@@ -21,10 +21,12 @@ Key Highlights:
 from builtins import dict, int, len, str
 from datetime import timedelta
 from uuid import UUID
-from fastapi import APIRouter, Depends, HTTPException, Response, status, Request
+from datetime import datetime
+from fastapi import APIRouter, Depends, HTTPException, Response, status, Request, Query
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.dependencies import get_current_user, get_db, get_email_service, require_role
+from app.models.user_model import UserRole
 from app.schemas.pagination_schema import EnhancedPagination
 from app.schemas.token_schema import TokenResponse
 from app.schemas.user_schemas import LoginRequest, UserBase, UserCreate, UserListResponse, UserResponse, UserUpdate
@@ -33,6 +35,7 @@ from app.services.jwt_service import create_access_token
 from app.utils.link_generation import create_user_links, generate_pagination_links
 from app.dependencies import get_settings
 from app.services.email_service import EmailService
+from typing import Optional, List
 router = APIRouter()
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="login")
 settings = get_settings()
@@ -245,3 +248,38 @@ async def verify_email(user_id: UUID, token: str, db: AsyncSession = Depends(get
     if await UserService.verify_email_with_token(db, user_id, token):
         return {"message": "Email verified successfully"}
     raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid or expired verification token")
+
+@router.get("/admin/users/search", response_model=UserListResponse, tags=["User Management Requires (Admin or Manager Roles)"])
+async def search_users(
+    username: Optional[str] = Query(None, description="Search by username", example="koala"),
+    email: Optional[str] = Query(None, description="Search by email", example="example.com"),
+    role: Optional[UserRole] = Query(None, description="Search by role"),
+    is_locked: Optional[bool] = Query(None, description="Filter by verification status: true, false, or none"),
+    email_verified: Optional[bool] = Query(None, description="Filter by verification status: true, false, or none"),
+    date_from: Optional[datetime] = Query(None, description="Filter by registration start date", example="2023-01-01"),
+    date_to: Optional[datetime] = Query(None, description="Filter by registration end date", example="2026-01-01"),
+    skip: int = Query(0),
+    limit: int = Query(10),
+    db: AsyncSession = Depends(get_db),
+    current_user: dict = Depends(require_role(["ADMIN"])),
+):
+    
+    users = await UserService.search_users(
+        db,
+        username,
+        email,
+        role,
+        is_locked,
+        email_verified,
+        date_from,
+        date_to,
+        limit,
+        skip,
+    )
+    user_responses = [UserResponse.from_orm(user) for user in users]
+    return UserListResponse(
+        items=user_responses,
+        total=len(users),
+        page=(skip // limit) + 1,
+        size=len(users),
+    )
